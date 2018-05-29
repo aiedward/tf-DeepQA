@@ -7,9 +7,9 @@
 使用的數據集: [Cornell Movie-Dialogs Corpus](http://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html)
 
 此數據集蒐集了大量電影英文劇本中的對話:  
-10292對電影人物間的220579次對話  
-共包含617部電影中的9035個角色  
-總共304713條台詞
+- 10292對電影人物間的220579次對話  
+- 共包含617部電影中的9035個角色  
+- 總共304713條台詞
 
 這次的訓練只有使用 movie\_lines.txt 和 movie\_conversations.txt 兩個檔案  
 因為我們是要train一個general的對話系統, 所以只考慮對話關係跟內容, 暫時不考慮出自哪部電影或角色等資訊
@@ -43,21 +43,14 @@
 Encoder (Bidirectional RNN):
 
     # bidirectional RNN
-    encoder_cell_fw = tf.nn.rnn_cell.MultiRNNCell(
-        [self.get_a_cell(self.lstm_size, self.keep_prob) for _ in range(self.num_layers)]
-    )
-    encoder_cell_bw = tf.nn.rnn_cell.MultiRNNCell(
-        [self.get_a_cell(self.lstm_size, self.keep_prob) for _ in range(self.num_layers)]
-    )
-    encoder_outputs, encoder_state = tf.nn.bidirectional_dynamic_rnn(encoder_cell_fw, encoder_cell_bw, self.encoder_inputs,
-    sequence_length=self.x_seq_lengths, dtype=tf.float32)
+    encoder_cell_fw = tf.nn.rnn_cell.MultiRNNCell([self.get_a_cell(self.lstm_size, self.keep_prob) for _ in range(self.num_layers)])
+    encoder_cell_bw = tf.nn.rnn_cell.MultiRNNCell([self.get_a_cell(self.lstm_size, self.keep_prob) for _ in range(self.num_layers)])
+    encoder_outputs, encoder_state = tf.nn.bidirectional_dynamic_rnn(encoder_cell_fw, encoder_cell_bw, self.encoder_inputs, sequence_length=self.x_seq_lengths, dtype=tf.float32)
 
 Decoder (加入attention mechanism):
 
     # decoder
-    decoder_cell = tf.nn.rnn_cell.MultiRNNCell(
-        [self.get_a_cell(self.lstm_size, self.keep_prob) for _ in range(self.num_layers)]
-    )
+    decoder_cell = tf.nn.rnn_cell.MultiRNNCell([self.get_a_cell(self.lstm_size, self.keep_prob) for _ in range(self.num_layers)])
     projection_layer = tf.layers.Dense(self.vocab_size, use_bias=False)
 
     #attention
@@ -80,7 +73,7 @@ Decoder (加入attention mechanism):
 
 載入train好的model 0529, 並做QA的測試
 
-    python .\sample.py --checkpoint_path ./model/0529 --converter_name 0529
+    python sample.py --checkpoint_path ./model/0529 --converter_name 0529
 
 這個model我總共只train了10000個iteration, loss從一開始約7降到3.8左右
 
