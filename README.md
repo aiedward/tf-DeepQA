@@ -65,29 +65,40 @@ Decoder (加入attention mechanism):
 
 ### Train
 
-用預設參數做training, 並將model存到 0529/
+用預設參數做training, 並將model存到 0529 資料夾
 
     python train.py --name 0529
 
 ### Result
 
-載入train好的model 0529, 並做QA的測試
+這個model我總共只train了10000個iteration, loss從一開始約7降到3.8左右  
+因為loss還不夠低, 所以可預期表現應該不可能太好
+
+直接載入train好的model 0529, 並做對話測試
+
+預設使用Greedy方式選取每一步機率最高的word生成句子
 
     python sample.py --checkpoint_path ./model/0529 --converter_name 0529
 
-這個model我總共只train了10000個iteration, loss從一開始約7降到3.8左右
+Greedy 測試結果:
 
-以下是一些簡單的測試結果:
+![greedy1](./img/greedy1.png)
 
-![result1](./img/result1.png)
+另外我也實作了 Beam Search 方法來生成句子(預設beam width為3, 會產生top3回應)
 
-![result2](./img/result2.png)
+    python sample.py --checkpoint_path ./model/0529 --converter_name 0529 --beam_search True --beam_width 3
 
-可以發現非常的不OK...
+Beam Search 測試結果:
+
+![beam1](./img/beam1.png)
+
+![beam2](./img/beam2.png)
+
+可以發現, 整體來說非常不OK...
 
 回應的句子大致算完整, 但幾乎都沒有回應到輸入的句子, 還有極大的進步空間
 
-這裡我使用的輸出方式是 Greedy Choice, 或許改用 Beam Search 會好一些?
+而greedy和beam search相比, 因為機率取法不同, 輸出結果也會有不同
 
-另外, 如果將model訓練更久讓loss再降低, 也勢必會有更好的結果
+結論是, 必須將model訓練更久讓loss再降低, 才能有更好的結果
 
