@@ -104,4 +104,4 @@ def loaddata(path, max_len=10):
 	indexed_lines = lines2index(movie_lines, lang)
 	data = createTrainData(conversations, indexed_lines, max_len)
 
-	return data, lang, w2v
+	return data, lang

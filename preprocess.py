@@ -26,13 +26,13 @@ def readfiles(path):
 
 	# pre-trained w2v
 	w2v = dict()
-	with codecs.open('./glove.6B.300d.txt', 'r', encoding='utf8', errors='ignore') as f:
-		for line in f:
-			tmp = line.split()
-			w2v[tmp[0]] = [float(i) for i in tmp[1:]]
+	# with codecs.open('./glove.6B.300d.txt', 'r', encoding='utf8', errors='ignore') as f:
+	# 	for line in f:
+	# 		tmp = line.split()
+	# 		w2v[tmp[0]] = [float(i) for i in tmp[1:]]
 
-	print('total %d word2vec lines.' % len(w2v))
-	print('-------------------')
+	# print('total %d word2vec lines.' % len(w2v))
+	# print('-------------------')
 
 	return conversations, movie_lines, w2v
 

@@ -22,6 +22,7 @@ tf.flags.DEFINE_integer('max_iters', 10000, 'max iters to train')
 tf.flags.DEFINE_integer('save_every_n', 500, 'save the model every n steps')
 tf.flags.DEFINE_integer('log_every_n', 50, 'log to the screen every n steps')
 tf.flags.DEFINE_integer('max_vocab', 3500, 'max char number')
+tf.flags.DEFINE_boolean('bidirectional', True, 'whether to use bidirectional')
 
 path = './cornell movie-dialogs corpus/'
 
@@ -30,7 +31,7 @@ def main(_):
     if os.path.exists(model_path) is False:
         os.makedirs(model_path)
 
-    train_data, train_lang, w2v = loaddata(path, FLAGS.num_steps)
+    train_data, train_lang = loaddata(path, FLAGS.num_steps)
     vocab_size = train_lang.vocab_size
 
     converter = TextConverter(lang=train_lang, max_vocab=FLAGS.max_vocab)
@@ -49,7 +50,8 @@ def main(_):
                     use_embedding=FLAGS.use_embedding,
                     embedding_size=FLAGS.embedding_size,
                     max_iters=FLAGS.max_iters,
-                    bidirectional=True
+                    bidirectional=FLAGS.bidirectional,
+                    beam_search=False
                     )
     model.train(g,
                 converter,
