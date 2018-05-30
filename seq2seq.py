@@ -10,11 +10,10 @@ class Seq2Seq:
 	def __init__(self, mode, vocab_size, batch_size=64, num_steps=20,
 				 max_steps=20, lstm_size=128, num_layers=2, learning_rate=0.001,
 				 grad_clip=5, train_keep_prob=0.5, use_embedding=False,
-				 embedding_size=128, max_iters=10000, bidirectional=False):
+				 embedding_size=128, max_iters=10000, bidirectional=False,
+				 beam_search=False, beam_width=3):
 		if mode == 'sample':
 			batch_size = 1
-		# else:
-		# 	batch_size, num_steps = batch_size, num_steps
 
 		self.mode = mode
 		self.vocab_size = vocab_size
@@ -30,13 +29,16 @@ class Seq2Seq:
 		self.use_embedding = use_embedding
 		self.embedding_size = embedding_size
 		self.bidirectional = bidirectional
+		self.beam_search = beam_search
+		self.beam_width = beam_width
 
 		tf.reset_default_graph()
 		self.build_inputs()
 		self.build_encoder()
 		self.build_decoder()
-		self.build_loss()
-		self.build_optimizer()
+		if self.mode == 'train':
+			self.build_loss()
+			self.build_optimizer()
 		self.saver = tf.train.Saver()
 
 	def build_inputs(self):
@@ -110,27 +112,40 @@ class Seq2Seq:
 
 			projection_layer = tf.layers.Dense(self.vocab_size, use_bias=False)
 
-			attention_mechanism = tf.contrib.seq2seq.LuongAttention(self.lstm_size, self.encoder_outputs)
-			decoder_cell = tf.contrib.seq2seq.AttentionWrapper(decoder_cell, attention_mechanism, attention_layer_size=self.lstm_size)
-			decoder_initial_state = decoder_cell.zero_state(self.batch_size, tf.float32).clone(cell_state=self.encoder_state)
+			if self.beam_search:
+				beam_width = self.beam_width
+				tiled_encoder_outputs = tf.contrib.seq2seq.tile_batch(self.encoder_outputs, multiplier=beam_width)
+				tiled_encoder_state = tf.contrib.seq2seq.tile_batch(self.encoder_state, multiplier=beam_width)
+				tiled_sequence_length = tf.contrib.seq2seq.tile_batch(self.x_seq_lengths, multiplier=beam_width)
+				attention_mechanism = tf.contrib.seq2seq.LuongAttention(self.lstm_size, tiled_encoder_outputs, memory_sequence_length=tiled_sequence_length)
+				decoder_cell = tf.contrib.seq2seq.AttentionWrapper(decoder_cell, attention_mechanism, attention_layer_size=self.lstm_size)
+				decoder_initial_state = decoder_cell.zero_state(self.batch_size * beam_width, tf.float32).clone(cell_state=tiled_encoder_state)
+				decoder = tf.contrib.seq2seq.BeamSearchDecoder(decoder_cell, self.embedding,
+							[1], 2, decoder_initial_state, beam_width, output_layer=projection_layer)
 
-			if self.mode == 'train':
-				helper = tf.contrib.seq2seq.TrainingHelper(self.decoder_inputs, self.y_seq_lengths)
-			elif self.mode == 'sample':
-				helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
-					self.embedding,
-					start_tokens=tf.fill([self.batch_size], 1), 
-					end_token=2
-				)
-			
-			decoder = tf.contrib.seq2seq.BasicDecoder(decoder_cell, helper, decoder_initial_state, projection_layer)
+			else:
+				attention_mechanism = tf.contrib.seq2seq.LuongAttention(self.lstm_size, self.encoder_outputs)
+				decoder_cell = tf.contrib.seq2seq.AttentionWrapper(decoder_cell, attention_mechanism, attention_layer_size=self.lstm_size)
+				decoder_initial_state = decoder_cell.zero_state(self.batch_size, tf.float32).clone(cell_state=self.encoder_state)
+
+				if self.mode == 'train':
+					helper = tf.contrib.seq2seq.TrainingHelper(self.decoder_inputs, self.y_seq_lengths)
+				elif self.mode == 'sample':
+					helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+						self.embedding,
+						start_tokens=tf.fill([self.batch_size], 1), 
+						end_token=2
+					)
+				
+				decoder = tf.contrib.seq2seq.BasicDecoder(decoder_cell, helper, decoder_initial_state, projection_layer)
 
 			self.decoder_outputs, self.decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(decoder,
 															# output_time_major=False,
 															maximum_iterations=self.max_steps)
 
-			self.logits = self.decoder_outputs.rnn_output
-			self.sample_id = self.decoder_outputs.sample_id
+			if not self.beam_search:
+				self.logits = self.decoder_outputs.rnn_output
+				self.sample_id = self.decoder_outputs.sample_id
 
 	def build_loss(self):
 		with tf.name_scope('loss'):
@@ -187,16 +202,16 @@ class Seq2Seq:
 
 	def sample(self, x):
 		sess = self.session
-		# new_state = sess.run(self.initial_state)
 		feed = {self.inputs: [x],
 				self.keep_prob: 1.,
-				# self.initial_state: new_state,
 				self.x_seq_lengths: [len(x)]
 				}
-		sample_id, new_state = sess.run([self.sample_id, self.decoder_state],
-									feed_dict=feed)
-
-		return sample_id
+		if self.beam_search:
+			(_ ,decoder_outputs), decoder_state = sess.run([self.decoder_outputs, self.decoder_state], feed_dict=feed)
+			return decoder_outputs
+		else:
+			sample_id, docoder_state = sess.run([self.sample_id, self.decoder_state], feed_dict=feed)
+			return sample_id
 
 	def load(self, checkpoint):
 		self.session = tf.Session()

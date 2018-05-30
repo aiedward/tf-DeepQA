@@ -40,14 +40,10 @@ def get_batch(batch, max_len):
 
 		y_len = len(y)
 		if y_len >= y_max_steps:
-			# batch_y1.append(y[:y_max_steps])
-			# batch_y2.append(y[:y_max_steps])
 			batch_y1.append([1] + y[:y_max_steps - 1])
 			batch_y2.append(y[:y_max_steps - 1] + [2])
 			y_seq_lengths.append(y_max_steps)
 		else:
-			# batch_y1.append(y + [0 for i in range(y_max_steps - y_len)])
-			# batch_y2.append(y + [0 for i in range(y_max_steps - y_len)])
 			batch_y1.append([1] + y + [0 for i in range(y_max_steps - y_len - 1)])
 			batch_y2.append(y + [2] + [0 for i in range(y_max_steps - y_len - 1)])
 			y_seq_lengths.append(y_len + 1)
@@ -71,7 +67,6 @@ def batch_generator(data, batch_size, max_steps):
 			x = batch_x
 			y1 = batch_y1
 			y2 = batch_y2
-			# print(y1, y2)
 			yield x, y1, y2, seq_lengths
 		epoch += 1
 
@@ -83,16 +78,14 @@ class TextConverter(object):
 		else:
 			self.lang = lang
 		self.vocab_size = self.lang.vocab_size
-		# self.index2word = lang.index2word
-		# self.index2word[lang.word2index['<BLK>']] = '.'
-		# self.vocab_size = lang.vocab_size
 
 	def idxs_to_words(self, idx_sentence):
 		s = ''
 		for idx in idx_sentence:
 			w = self.lang.index2word[idx]
 			if w == '<EOS>':
-				s += '. '
+				# s += '. '
+				break
 			else:
 				s += w + ' '
 		return s.capitalize()
@@ -112,3 +105,21 @@ class TextConverter(object):
 	def save_lang(self, filename):
 		with open('./converter/' + filename, 'wb') as f:
 			pickle.dump(self.lang, f)
+
+	def beam_to_sentences(self, predicted_ids, parent_ids):
+		depth = len(predicted_ids)
+		width = len(predicted_ids[0])
+		sentences = [[] for _ in range(width)]
+		for i in range(width):
+			sentences[i].append(predicted_ids[depth - 1][i])
+			tmp_idx = i
+			for d in range(depth - 1):
+				sentences[i].append(predicted_ids[depth - 2 - d][parent_ids[depth - 1 - d][tmp_idx]])
+				tmp_idx = parent_ids[depth - 1 - d][tmp_idx]
+
+		s = []
+		for idxs in sentences:
+			s.append(self.idxs_to_words(list(reversed(idxs))))
+
+		return s
+
