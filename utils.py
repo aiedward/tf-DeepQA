@@ -85,6 +85,7 @@ class TextConverter(object):
 			w = self.lang.index2word[idx]
 			if w == '<EOS>':
 				# s += '. '
+				# s += w
 				break
 			else:
 				s += w + ' '

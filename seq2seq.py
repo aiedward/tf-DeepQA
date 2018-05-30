@@ -189,10 +189,10 @@ class Seq2Seq:
 					print('iter: {}/{}... '.format(n_iter, self.max_iters),
 						  'loss: {:.4f}... '.format(batch_loss),
 						  '{:.4f} sec/batch'.format((end - start)))
-					print('input:')
-					print(converter.idxs_to_words(x[0]))
-					print('output:')
-					print(converter.idxs_to_words(sample_id[0]))
+					# print('input:')
+					# print(converter.idxs_to_words(x[0]))
+					# print('output:')
+					# print(converter.idxs_to_words(sample_id[0]))
 					print('--------------------')
 				if (n_iter % save_every_n == 0):
 					self.saver.save(sess, os.path.join(save_path, 'model'), global_step=n_iter)
